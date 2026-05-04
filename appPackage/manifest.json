@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "0.1.0",
+  "id": "{{MICROSOFT_APP_ID}}",
+  "developer": {
+    "name": "labby-voice",
+    "websiteUrl": "https://github.com/scallighan/labby-voice",
+    "privacyUrl": "https://github.com/scallighan/labby-voice",
+    "termsOfUseUrl": "https://github.com/scallighan/labby-voice"
+  },
+  "name": {
+    "short": "Labby Voice",
+    "full": "Labby Voice - Azure Infrastructure Assistant"
+  },
+  "description": {
+    "short": "Voice-enabled Azure infrastructure assistant",
+    "full": "A voice-enabled AI agent that can query and report on Azure resources in your subscription. Talk to Labby on a Teams call or chat to explore your cloud environment."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0078D4",
+  "bots": [
+    {
+      "botId": "{{MICROSOFT_APP_ID}}",
+      "scopes": ["personal", "team", "groupChat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "supportsCalling": true,
+      "supportsVideo": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}

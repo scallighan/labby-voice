@@ -6,7 +6,7 @@ from aiohttp import web
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import CloudAdapter
 
-from bot.agent import LabbyVoiceAgent
+from bot.agent import LabbyVoiceAgent, set_call_handler
 from bot.config import Config
 from call.handler import CallHandler
 from call.media_stream import MediaBridge
@@ -35,6 +35,7 @@ if config.ACS_CONNECTION_STRING and config.CALLBACK_BASE_URL:
         callback_base_url=config.CALLBACK_BASE_URL,
     )
     media_bridge = MediaBridge(voice_handler=voice_handler, config=config)
+    set_call_handler(call_handler)
     logger.info("ACS Call Automation enabled")
 else:
     logger.warning("ACS not configured — voice calling disabled (chat-only mode)")

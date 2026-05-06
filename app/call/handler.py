@@ -5,9 +5,11 @@ import logging
 from azure.communication.callautomation import (
     AudioFormat,
     CallAutomationClient,
+    CallInvite,
     MediaStreamingAudioChannelType,
     MediaStreamingContentType,
     MediaStreamingOptions,
+    MicrosoftTeamsUserIdentifier,
     StreamingTransportType,
 )
 
@@ -29,12 +31,9 @@ class CallHandler:
         base = self.callback_base_url.replace("https://", "wss://").replace("http://", "ws://")
         return f"{base}/api/calls/media"
 
-    def answer_call(self, incoming_call_context: str) -> str:
-        """Answer an incoming call with bidirectional media streaming enabled.
-
-        Returns the call_connection_id for tracking.
-        """
-        media_streaming = MediaStreamingOptions(
+    def _media_streaming_options(self) -> MediaStreamingOptions:
+        """Build reusable media streaming config for bidirectional audio."""
+        return MediaStreamingOptions(
             transport_url=self.media_streaming_url(),
             transport_type=StreamingTransportType.WEBSOCKET,
             content_type=MediaStreamingContentType.AUDIO,
@@ -44,14 +43,41 @@ class CallHandler:
             audio_format=AudioFormat.PCM16_K_MONO,
         )
 
+    def answer_call(self, incoming_call_context: str) -> str:
+        """Answer an incoming call with bidirectional media streaming enabled.
+
+        Returns the call_connection_id for tracking.
+        """
         result = self.client.answer_call(
             incoming_call_context=incoming_call_context,
             callback_url=self.callback_url,
-            media_streaming=media_streaming,
+            media_streaming=self._media_streaming_options(),
         )
 
         call_connection_id = result.call_connection.call_connection_id
         logger.info("Answered call, connection_id=%s", call_connection_id)
+        return call_connection_id
+
+    def create_call(self, teams_user_aad_id: str, display_name: str = "Labby Voice") -> str:
+        """Initiate an outbound call to a Teams user via ACS Teams interop.
+
+        Args:
+            teams_user_aad_id: The target user's Microsoft Entra (AAD) Object ID.
+            display_name: Caller display name shown to the Teams user.
+
+        Returns the call_connection_id for tracking.
+        """
+        target = MicrosoftTeamsUserIdentifier(user_id=teams_user_aad_id)
+        invite = CallInvite(target=target, source_display_name=display_name)
+
+        result = self.client.create_call(
+            target_participant=invite,
+            callback_url=self.callback_url,
+            media_streaming=self._media_streaming_options(),
+        )
+
+        call_connection_id = result.call_connection.call_connection_id
+        logger.info("Outbound call to %s, connection_id=%s", teams_user_aad_id, call_connection_id)
         return call_connection_id
 
     def hang_up(self, call_connection_id: str) -> None:

@@ -81,7 +81,7 @@ resource "azurerm_storage_account" "this" {
   tags = local.tags
 
   lifecycle {
-    ignore_changes = [ network_rules ]
+    ignore_changes = [network_rules]
   }
 }
 
@@ -313,7 +313,7 @@ resource "azurerm_container_app" "bot" {
   tags = local.tags
 
   lifecycle {
-    ignore_changes = [secret]
+    ignore_changes = []
   }
 }
 
@@ -390,12 +390,12 @@ resource "azurerm_communication_service" "acs" {
 
 # Event Grid subscription for ACS incoming call events → bot webhook
 resource "azurerm_eventgrid_system_topic" "acs" {
-  name                   = "evgt-acs-${local.func_name}"
-  resource_group_name    = azurerm_resource_group.this.name
-  location               = "global"
-  source_resource_id = azurerm_communication_service.acs.id
-  topic_type             = "Microsoft.Communication.CommunicationServices"
-  tags                   = local.tags
+  name                = "evgt-acs-${local.func_name}"
+  resource_group_name = azurerm_resource_group.this.name
+  location            = "global"
+  source_resource_id  = azurerm_communication_service.acs.id
+  topic_type          = "Microsoft.Communication.CommunicationServices"
+  tags                = local.tags
 }
 
 resource "azurerm_eventgrid_system_topic_event_subscription" "acs_incoming_call" {

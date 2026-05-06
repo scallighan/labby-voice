@@ -11,6 +11,14 @@ from bot.tools.azure_resources import QUERIES, query_resources
 logger = logging.getLogger(__name__)
 config = Config()
 
+# Set by app.py after initialization so the agent can initiate outbound calls
+_call_handler = None
+
+
+def set_call_handler(handler):
+    global _call_handler
+    _call_handler = handler
+
 
 class LabbyVoiceAgent(TeamsActivityHandler):
     """Teams bot that can query Azure resources and handle voice interactions."""
@@ -18,7 +26,9 @@ class LabbyVoiceAgent(TeamsActivityHandler):
     async def on_message_activity(self, turn_context: TurnContext) -> None:
         text = (turn_context.activity.text or "").strip().lower()
 
-        if text.startswith("/resources"):
+        if text.startswith("/call"):
+            await self._handle_call(turn_context, text)
+        elif text.startswith("/resources"):
             await self._handle_resource_query(turn_context, text)
         elif text.startswith("/help"):
             await self._send_help(turn_context)
@@ -26,6 +36,28 @@ class LabbyVoiceAgent(TeamsActivityHandler):
             await turn_context.send_activity(
                 f"You said: {turn_context.activity.text}\n\nType `/help` to see available commands."
             )
+
+    async def _handle_call(self, turn_context: TurnContext, text: str) -> None:
+        """Initiate an outbound voice call to the message sender."""
+        if not _call_handler:
+            await turn_context.send_activity("Voice calling is not configured on this instance.")
+            return
+
+        # Resolve the Teams user's AAD Object ID from the activity
+        aad_id = getattr(turn_context.activity.from_property, "aad_object_id", None)
+        if not aad_id:
+            await turn_context.send_activity(
+                "Could not resolve your Teams identity. "
+                "Please ensure you're messaging from a Teams client."
+            )
+            return
+
+        try:
+            await turn_context.send_activity("📞 Calling you now...")
+            _call_handler.create_call(teams_user_aad_id=aad_id)
+        except Exception as e:
+            logger.exception("Failed to initiate outbound call")
+            await turn_context.send_activity(f"Failed to start call: {e}")
 
     async def _handle_resource_query(self, turn_context: TurnContext, text: str) -> None:
         parts = text.split(maxsplit=1)
@@ -71,6 +103,7 @@ class LabbyVoiceAgent(TeamsActivityHandler):
         help_text = (
             "**Labby Voice Agent**\n\n"
             "Commands:\n"
+            "- `/call` — Labby calls you on Teams for a voice conversation\n"
             "- `/resources` — List all Azure resources\n"
             "- `/resources vms` — List virtual machines\n"
             "- `/resources app_services` — List App Services\n"

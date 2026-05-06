@@ -29,6 +29,7 @@ class Config:
 
     # Azure Communication Services
     ACS_CONNECTION_STRING: str = os.getenv("ACS_CONNECTION_STRING", "")
+    CALLBACK_BASE_URL: str = os.getenv("CALLBACK_BASE_URL", "")
 
     # Azure subscription for Resource Graph
     SUBSCRIPTION_ID: str = os.getenv("AZURE_SUBSCRIPTION_ID", "")

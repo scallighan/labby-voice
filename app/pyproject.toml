@@ -16,6 +16,9 @@ dependencies = [
     # Voice Live API
     "websockets>=13.0",
 
+    # ACS Call Automation
+    "azure-communication-callautomation",
+
     # Web server
     "aiohttp>=3.9",
 
@@ -32,7 +35,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["bot*", "voice*"]
+include = ["bot*", "voice*", "call*"]
 
 [tool.ruff]
 target-version = "py312"

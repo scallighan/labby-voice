@@ -58,16 +58,16 @@ resource "azurerm_resource_group" "this" {
 }
 
 resource "azurerm_storage_account" "this" {
-  name = "sa${local.func_name}${lower(local.loc_short)}"
+  name                = "sa${local.func_name}${lower(local.loc_short)}"
   resource_group_name = azurerm_resource_group.this.name
-  location = azurerm_resource_group.this.location
+  location            = azurerm_resource_group.this.location
 
-  account_kind = "StorageV2"
-  account_tier = "Standard"
+  account_kind             = "StorageV2"
+  account_tier             = "Standard"
   account_replication_type = "LRS"
 
-  shared_access_key_enabled = false
-  public_network_access_enabled = true
+  shared_access_key_enabled     = false
+  public_network_access_enabled = false
 
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
@@ -77,8 +77,12 @@ resource "azurerm_storage_account" "this" {
       "AzureServices"
     ]
   }
-  
+
   tags = local.tags
+
+  lifecycle {
+    ignore_changes = [ network_rules ]
+  }
 }
 
 # give current user access to the storage account
@@ -95,45 +99,6 @@ resource "azurerm_storage_container" "search" {
   container_access_type = "private"
 }
 
-# loop through the data directory and upload any *.json files to the storage account
-# data "local_file" "json_files" {
-#   for_each = fileset("${path.module}/data", "*.json")
-#   filename = "${path.module}/data/${each.value}"
-# }
-
-# upload the JSON files to the storage account
-# resource "azurerm_storage_blob" "json_files" {
-#   depends_on = [ azurerm_role_assignment.current_user_storage ]
-#   for_each = data.local_file.json_files
-#   name     = each.key
-#   storage_account_name = azurerm_storage_account.this.name
-#   storage_container_name = azurerm_storage_container.search.name
-#   type     = "Block"
-#   source   = each.value.filename
-# }
-
-
-resource "azurerm_search_service" "this" {
-  name                = "ais${local.func_name}"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = azurerm_resource_group.this.location
-  sku                 = "basic"
-
-  local_authentication_enabled = false
-
-  semantic_search_sku = "free"
-
-  identity {
-    type = "SystemAssigned"
-  }
-}
-
-# give access to the search service to the storage account
-resource "azurerm_role_assignment" "search_storage" {
-  scope                = azurerm_storage_account.this.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_search_service.this.identity[0].principal_id
-} 
 
 resource "azapi_resource" "ai_foundry" {
   type                      = "Microsoft.CognitiveServices/accounts@2025-06-01"
@@ -198,27 +163,15 @@ resource "azapi_resource" "ai_foundry_project" {
   ]
 }
 
-resource "azurerm_role_assignment" "azure_ai_user_ai_search" {
-  scope                = azurerm_resource_group.this.id
-  role_definition_name = "Azure AI User"
-  principal_id         = azurerm_search_service.this.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "search_index_data_contributor_ai_foundry_project" {
-  scope                = azurerm_resource_group.this.id
-  role_definition_name = "Search Index Data Contributor"
-  principal_id         = azapi_resource.ai_foundry_project.output.identity.principalId
-}
-
 # App Insight instance for monitoring
 resource "azurerm_application_insights" "this" {
   name                = "appi${local.func_name}"
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
 
-  workspace_id        = data.azurerm_log_analytics_workspace.default.id
+  workspace_id = data.azurerm_log_analytics_workspace.default.id
 
-  application_type    = "other"
+  application_type = "other"
 }
 
 resource "azurerm_container_app_environment" "this" {
@@ -235,8 +188,8 @@ resource "azurerm_container_app_environment" "this" {
   tags = local.tags
   lifecycle {
     ignore_changes = [
-     infrastructure_resource_group_name,
-     log_analytics_workspace_id
+      infrastructure_resource_group_name,
+      log_analytics_workspace_id
     ]
   }
 }
@@ -248,6 +201,11 @@ resource "azurerm_container_app" "bot" {
   revision_mode                = "Single"
   workload_profile_name        = "Consumption"
 
+  secret {
+    name  = "acs-connection-string"
+    value = azurerm_communication_service.acs.primary_connection_string
+  }
+
   template {
     container {
       name   = "bot"
@@ -256,76 +214,76 @@ resource "azurerm_container_app" "bot" {
       memory = "1Gi"
 
       env {
-        name = "RUNNING_ON_AZURE"
+        name  = "RUNNING_ON_AZURE"
         value = "1"
       }
 
       env {
-        name = "TENANT_ID"
+        name  = "TENANT_ID"
         value = data.azurerm_client_config.current.tenant_id
       }
 
       env {
-        name = "CLIENT_ID"
+        name  = "CLIENT_ID"
         value = azurerm_user_assigned_identity.bot.client_id
       }
       env {
-        name = "tenantId"
+        name  = "tenantId"
         value = data.azurerm_client_config.current.tenant_id
       }
 
       env {
-        name = "clientId"
+        name  = "clientId"
         value = azurerm_user_assigned_identity.bot.client_id
       }
 
       env {
-        name = "AZURE_CLIENT_ID"
+        name  = "AZURE_CLIENT_ID"
         value = azurerm_user_assigned_identity.bot.client_id
       }
 
       # new for M365 Agent SDK
       env {
-        name = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID"
+        name  = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID"
         value = data.azurerm_client_config.current.tenant_id
       }
       env {
-        name = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID"
+        name  = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID"
         value = azurerm_user_assigned_identity.bot.client_id
       }
       env {
-        name = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__AUTHTYPE"
+        name  = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__AUTHTYPE"
         value = "UserManagedIdentity"
       }
 
       env {
-        name = "AZURE_AI_PROJECT_ENDPOINT"
+        name  = "AZURE_AI_PROJECT_ENDPOINT"
         value = "https://aif${local.func_name}.services.ai.azure.com/api/projects/fp${local.func_name}"
       }
 
       env {
-        name = "FOUNDRY_MODEL"
+        name  = "FOUNDRY_MODEL"
         value = "gpt-5.4-mini"
       }
 
       env {
-        name = "AZURE_SEARCH_ENDPOINT"
-        value = azurerm_search_service.this.endpoint
-      }
-
-      env {
-        name = "SEARCH_KNOWLEDGE_BASE_NAME"
-        value = var.search_knowledge_base_name
-      }
-
-      env {
-        name = "AZURE_SPEECH_REGION"
+        name  = "AZURE_SPEECH_REGION"
         value = azurerm_resource_group.this.location
       }
 
       env {
         name  = "AZURE_SUBSCRIPTION_ID"
         value = var.subscription_id
+      }
+
+      env {
+        name        = "ACS_CONNECTION_STRING"
+        secret_name = "acs-connection-string"
+      }
+
+      env {
+        name  = "CALLBACK_BASE_URL"
+        value = "https://aca-bot-${local.func_name}.${azurerm_container_app_environment.this.default_domain}"
       }
 
     }
@@ -349,13 +307,13 @@ resource "azurerm_container_app" "bot" {
   }
 
   identity {
-    type = "UserAssigned"
+    type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.bot.id]
   }
   tags = local.tags
 
   lifecycle {
-    ignore_changes = [ secret ]
+    ignore_changes = [secret]
   }
 }
 
@@ -366,16 +324,16 @@ resource "azurerm_user_assigned_identity" "bot" {
 }
 
 resource "azurerm_bot_service_azure_bot" "teamsbot" {
-  name                = "bot-${local.func_name}"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = "global"
-  microsoft_app_id    = azurerm_user_assigned_identity.bot.client_id
-  sku                 = "F0"
-  endpoint            = "https://${azurerm_container_app.bot.ingress[0].fqdn}/api/messages"
-  microsoft_app_msi_id = azurerm_user_assigned_identity.bot.id
+  name                    = "bot-${local.func_name}"
+  resource_group_name     = azurerm_resource_group.this.name
+  location                = "global"
+  microsoft_app_id        = azurerm_user_assigned_identity.bot.client_id
+  sku                     = "F0"
+  endpoint                = "https://${azurerm_container_app.bot.ingress[0].fqdn}/api/messages"
+  microsoft_app_msi_id    = azurerm_user_assigned_identity.bot.id
   microsoft_app_tenant_id = data.azurerm_client_config.current.tenant_id
-  microsoft_app_type  = "UserAssignedMSI"
-  tags = local.tags
+  microsoft_app_type      = "UserAssignedMSI"
+  tags                    = local.tags
 }
 
 resource "azurerm_bot_channel_ms_teams" "teams" {
@@ -406,7 +364,7 @@ resource "azurerm_cognitive_account" "speech" {
   kind                = "SpeechServices"
   sku_name            = "S0"
 
-  local_authentication_enabled = false
+  local_auth_enabled = false
 
   identity {
     type = "SystemAssigned"
@@ -428,6 +386,30 @@ resource "azurerm_communication_service" "acs" {
   resource_group_name = azurerm_resource_group.this.name
   data_location       = "United States"
   tags                = local.tags
+}
+
+# Event Grid subscription for ACS incoming call events → bot webhook
+resource "azurerm_eventgrid_system_topic" "acs" {
+  name                   = "evgt-acs-${local.func_name}"
+  resource_group_name    = azurerm_resource_group.this.name
+  location               = "global"
+  source_resource_id = azurerm_communication_service.acs.id
+  topic_type             = "Microsoft.Communication.CommunicationServices"
+  tags                   = local.tags
+}
+
+resource "azurerm_eventgrid_system_topic_event_subscription" "acs_incoming_call" {
+  name                = "incoming-call-${local.func_name}"
+  system_topic        = azurerm_eventgrid_system_topic.acs.name
+  resource_group_name = azurerm_resource_group.this.name
+
+  webhook_endpoint {
+    url = "https://${azurerm_container_app.bot.ingress[0].fqdn}/api/calls/events"
+  }
+
+  included_event_types = [
+    "Microsoft.Communication.IncomingCall",
+  ]
 }
 
 # --- Resource Graph: Reader role on subscription ---

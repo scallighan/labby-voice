@@ -4,18 +4,18 @@
   "version": "1.0.0",
   "id": "${{BOT_ID}}",
   "developer": {
-    "name": "AI Tabletop Co",
-    "websiteUrl": "https://github.com/scallighan/ai-tabletop-co",
-    "privacyUrl": "https://github.com/scallighan/ai-tabletop-co",
-    "termsOfUseUrl": "https://github.com/scallighan/ai-tabletop-co"
+    "name": "scallighan",
+    "websiteUrl": "https://github.com/scallighan/labby-voice",
+    "privacyUrl": "https://github.com/scallighan/labby-voice",
+    "termsOfUseUrl": "https://github.com/scallighan/labby-voice"
   },
   "name": {
-    "short": "AI Tabletop Co Copilot",
-    "full": "AI Tabletop Co Copilot and Insights Agent"
+    "short": "Labby Voice",
+    "full": "Voice agent sample"
   },
   "description": {
-    "short": "Custom copilot for AI Tabletop Co",
-    "full": "Custom copilot for AI Tabletop Co to understand business insights"
+    "short": "Voice agent sample app",
+    "full": "Using voice to communicate with your agent"
   },
   "icons": {
     "color": "color.png",

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.22/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.22",
+  "version": "1.0.0",
+  "id": "${{BOT_ID}}",
+  "developer": {
+    "name": "AI Tabletop Co",
+    "websiteUrl": "https://github.com/scallighan/ai-tabletop-co",
+    "privacyUrl": "https://github.com/scallighan/ai-tabletop-co",
+    "termsOfUseUrl": "https://github.com/scallighan/ai-tabletop-co"
+  },
+  "name": {
+    "short": "AI Tabletop Co Copilot",
+    "full": "AI Tabletop Co Copilot and Insights Agent"
+  },
+  "description": {
+    "short": "Custom copilot for AI Tabletop Co",
+    "full": "Custom copilot for AI Tabletop Co to understand business insights"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#4464ee",
+  "validDomains": [],
+  "webApplicationInfo": {
+    "id": "${{BOT_ID}}",
+    "resource": "api://botid-${{BOT_ID}}"
+  },
+  "bots": [
+    {
+      "botId": "${{BOT_ID}}",
+      "scopes": [
+        "personal",
+        "team",
+        "groupChat",
+        "copilot"
+      ],
+      "supportsFiles": true,
+      "isNotificationOnly": false
+    }
+  ],
+  "copilotAgents": {
+    "customEngineAgents": [
+      {
+        "id": "${{BOT_ID}}",
+        "type": "bot",
+        "disclaimer": {
+          "text": "This agent uses AI. Please verify important information."
+        }
+      }
+    ]
+  }
+}

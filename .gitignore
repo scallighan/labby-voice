@@ -60,4 +60,4 @@ venv/
 
 # IDE
 .vscode/
-.idea/
+.idea/appPackage/manifest.json

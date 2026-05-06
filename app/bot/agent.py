@@ -47,8 +47,7 @@ class LabbyVoiceAgent(TeamsActivityHandler):
         aad_id = getattr(turn_context.activity.from_property, "aad_object_id", None)
         if not aad_id:
             await turn_context.send_activity(
-                "Could not resolve your Teams identity. "
-                "Please ensure you're messaging from a Teams client."
+                "Could not resolve your Teams identity. Please ensure you're messaging from a Teams client."
             )
             return
 

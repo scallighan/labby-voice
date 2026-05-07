@@ -8,6 +8,7 @@ from azure.communication.callautomation import (
     MediaStreamingAudioChannelType,
     MediaStreamingContentType,
     MediaStreamingOptions,
+    MicrosoftTeamsAppIdentifier,
     MicrosoftTeamsUserIdentifier,
     StreamingTransportType,
 )
@@ -18,9 +19,10 @@ logger = logging.getLogger(__name__)
 class CallHandler:
     """Manages ACS Call Automation lifecycle: answer calls, handle events, cleanup."""
 
-    def __init__(self, acs_connection_string: str, callback_base_url: str):
+    def __init__(self, acs_connection_string: str, callback_base_url: str, bot_app_id: str):
         self.client = CallAutomationClient.from_connection_string(acs_connection_string)
         self.callback_base_url = callback_base_url.rstrip("/")
+        self.bot_app_id = bot_app_id
 
     @property
     def callback_url(self) -> str:
@@ -67,12 +69,14 @@ class CallHandler:
         Returns the call_connection_id for tracking.
         """
         target = MicrosoftTeamsUserIdentifier(user_id=teams_user_aad_id)
+        teams_app_source = MicrosoftTeamsAppIdentifier(app_id=self.bot_app_id)
 
         result = self.client.create_call(
             target_participant=target,
             callback_url=self.callback_url,
             source_display_name=display_name,
             media_streaming=self._media_streaming_options(),
+            teams_app_source=teams_app_source,
         )
 
         call_connection_id = result.call_connection_id

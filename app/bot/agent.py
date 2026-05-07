@@ -116,11 +116,15 @@ class LabbyVoiceAgent(TeamsActivityHandler):
                 return
 
             join_url = meeting.get("joinWebUrl", "")
+            thread_id = meeting.get("chatInfo", {}).get("threadId", "")
+            if not thread_id:
+                await turn_context.send_activity("Meeting created but missing chatInfo.threadId.")
+                return
 
-            # Bot joins the meeting via ACS Call Automation
+            # Bot joins the meeting via ACS Call Automation using the thread ID
             try:
-                conn_id = _call_handler.join_teams_meeting(join_url)
-                logger.info("Bot joined meeting: %s, connection_id=%s", join_url, conn_id)
+                conn_id = _call_handler.join_teams_meeting(thread_id)
+                logger.info("Bot joined meeting: thread=%s, connection_id=%s", thread_id, conn_id)
             except Exception as join_err:
                 logger.exception("Bot failed to join meeting")
                 await turn_context.send_activity(

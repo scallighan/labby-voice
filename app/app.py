@@ -102,6 +102,9 @@ async def call_events(request: web.Request) -> web.Response:
             if call_connection_id and media_bridge:
                 await media_bridge._cleanup(call_connection_id)
 
+        elif "CreateCallFailed" in event_type:
+            logger.error("CreateCallFailed: %s", event_data)
+
     return web.Response(status=200)
 
 

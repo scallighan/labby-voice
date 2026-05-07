@@ -26,15 +26,15 @@ class LabbyVoiceAgent(TeamsActivityHandler):
     async def on_message_activity(self, turn_context: TurnContext) -> None:
         text = (turn_context.activity.text or "").strip().lower()
 
-        if text.startswith("/call"):
+        if text.startswith("#call"):
             await self._handle_call(turn_context, text)
-        elif text.startswith("/resources"):
+        elif text.startswith("#resources"):
             await self._handle_resource_query(turn_context, text)
-        elif text.startswith("/help"):
+        elif text.startswith("#help"):
             await self._send_help(turn_context)
         else:
             await turn_context.send_activity(
-                f"You said: {turn_context.activity.text}\n\nType `/help` to see available commands."
+                f"You said: {turn_context.activity.text}\n\nType `#help` to see available commands."
             )
 
     async def _handle_call(self, turn_context: TurnContext, text: str) -> None:
@@ -102,14 +102,14 @@ class LabbyVoiceAgent(TeamsActivityHandler):
         help_text = (
             "**Labby Voice Agent**\n\n"
             "Commands:\n"
-            "- `/call` — Labby calls you on Teams for a voice conversation\n"
-            "- `/resources` — List all Azure resources\n"
-            "- `/resources vms` — List virtual machines\n"
-            "- `/resources app_services` — List App Services\n"
-            "- `/resources storage_accounts` — List storage accounts\n"
-            "- `/resources aks_clusters` — List AKS clusters\n"
-            "- `/resources resource_count_by_type` — Count by resource type\n"
-            "- `/resources <KQL query>` — Run a custom Resource Graph query\n"
-            "- `/help` — Show this help message"
+            "- `#call` — Labby calls you on Teams for a voice conversation\n"
+            "- `#resources` — List all Azure resources\n"
+            "- `#resources vms` — List virtual machines\n"
+            "- `#resources app_services` — List App Services\n"
+            "- `#resources storage_accounts` — List storage accounts\n"
+            "- `#resources aks_clusters` — List AKS clusters\n"
+            "- `#resources resource_count_by_type` — Count by resource type\n"
+            "- `#resources <KQL query>` — Run a custom Resource Graph query\n"
+            "- `#help` — Show this help message"
         )
         await turn_context.send_activity(help_text)

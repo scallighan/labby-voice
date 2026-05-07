@@ -92,8 +92,8 @@ ruff format .
 
 ## Teams Commands
 
-- `/call` — Labby calls you on Teams for a voice conversation
-- `/resources` — List all Azure resources
-- `/resources vms` — List virtual machines
-- `/resources <KQL>` — Run a custom Resource Graph query
-- `/help` — Show available commands
+- `#call` — Labby calls you on Teams for a voice conversation
+- `#resources` — List all Azure resources
+- `#resources vms` — List virtual machines
+- `#resources <KQL>` — Run a custom Resource Graph query
+- `#help` — Show available commands

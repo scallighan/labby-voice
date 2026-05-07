@@ -5,7 +5,6 @@ import logging
 from azure.communication.callautomation import (
     AudioFormat,
     CallAutomationClient,
-    CallInvite,
     MediaStreamingAudioChannelType,
     MediaStreamingContentType,
     MediaStreamingOptions,
@@ -68,11 +67,11 @@ class CallHandler:
         Returns the call_connection_id for tracking.
         """
         target = MicrosoftTeamsUserIdentifier(user_id=teams_user_aad_id)
-        invite = CallInvite(target=target, source_display_name=display_name)
 
         result = self.client.create_call(
-            target_participant=invite,
+            target_participant=target,
             callback_url=self.callback_url,
+            source_display_name=display_name,
             media_streaming=self._media_streaming_options(),
         )
 

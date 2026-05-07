@@ -5,18 +5,18 @@ Voice-enabled Azure infrastructure assistant for Microsoft Teams.
 ## Architecture
 
 ```
-Teams Call → ACS (audio bridge) → Voice Live API WebSocket → Python Agent
 Teams Chat → M365 Agents SDK (aiohttp) → Python Agent
+#call → Graph API (create meeting) → ACS connect_call (join) → MediaBridge → Voice Live API
 Python Agent → Azure Resource Graph → Azure Subscription Resources
 ```
 
-The bot supports voice sessions via the `#call` command: the bot creates a Teams meeting, joins it via ACS Call Automation, and sends the user a join link. Voice audio is bridged through ACS to the Azure Voice Live API for real-time speech-to-speech interactions.
+The bot supports voice sessions via the `#call` command: the bot creates a Teams online meeting via the Microsoft Graph API, joins it via ACS Call Automation (`connect_call` with the meeting's thread ID), and sends the user a join link. Voice audio is bridged through ACS to the Azure Voice Live API for real-time speech-to-speech interactions.
 
 - **app/**: Python agent using Microsoft 365 Agents SDK
   - `app.py` — entrypoint, creates aiohttp app with `/api/messages`, `/api/calls/events`, and `/health` routes
-  - `bot/agent.py` — `LabbyVoiceAgent`, handles chat commands and outbound call initiation
+  - `bot/agent.py` — `LabbyVoiceAgent`, handles chat commands and meeting-based voice sessions
   - `bot/tools/azure_resources.py` — Azure Resource Graph queries with KQL
-  - `call/handler.py` — ACS Call Automation client for answering and creating calls
+  - `call/handler.py` — ACS Call Automation client for answering calls and joining meetings
   - `call/media_stream.py` — Bidirectional audio bridge between ACS and Voice Live API
   - `voice/handler.py` — Voice Live API WebSocket client
 - **terraform/**: Azure infrastructure (Bot Service, ACS, Speech, AI Foundry, Container App, RBAC)
@@ -109,7 +109,7 @@ ruff format .
 
 ## Teams Commands
 
-- `#call` — Labby calls you on Teams for a voice conversation
+- `#call` — Start a voice session (creates a Teams meeting, bot joins, sends you the link)
 - `#resources` — List all Azure resources
 - `#resources vms` — List virtual machines
 - `#resources <KQL>` — Run a custom Resource Graph query

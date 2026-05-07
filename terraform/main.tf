@@ -405,11 +405,27 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "acs_incoming_call"
 
   webhook_endpoint {
     url = "https://${azurerm_container_app.bot.ingress[0].fqdn}/api/calls/events"
+    max_events_per_batch = 1
+    preferred_batch_size_in_kilobytes = 64
   }
+
+  
 
   included_event_types = [
     "Microsoft.Communication.IncomingCall",
   ]
+}
+
+# --- Microsoft Graph: OnlineMeetings permission for voice sessions ---
+
+data "azuread_service_principal" "msgraph" {
+  client_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
+}
+
+resource "azuread_app_role_assignment" "bot_online_meetings" {
+  app_role_id         = data.azuread_service_principal.msgraph.app_role_ids["OnlineMeetings.ReadWrite.All"]
+  principal_object_id = azurerm_user_assigned_identity.bot.principal_id
+  resource_object_id  = data.azuread_service_principal.msgraph.object_id
 }
 
 # --- Resource Graph: Reader role on subscription ---

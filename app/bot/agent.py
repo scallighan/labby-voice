@@ -2,6 +2,8 @@
 
 import logging
 
+import aiohttp
+from azure.identity.aio import ClientSecretCredential, ManagedIdentityCredential
 from microsoft_agents.hosting.core import TurnContext
 from microsoft_agents.hosting.teams import TeamsActivityHandler
 
@@ -14,10 +16,59 @@ config = Config()
 # Set by app.py after initialization so the agent can initiate outbound calls
 _call_handler = None
 
+GRAPH_SCOPE = "https://graph.microsoft.com/.default"
+
 
 def set_call_handler(handler):
     global _call_handler
     _call_handler = handler
+
+
+def _get_graph_credential():
+    """Get credential for Microsoft Graph API calls."""
+    if config.RUNNING_ON_AZURE and config.CLIENT_ID:
+        return ManagedIdentityCredential(client_id=config.CLIENT_ID)
+    import os
+
+    client_secret = os.getenv("CLIENT_SECRET", "")
+    if client_secret:
+        return ClientSecretCredential(
+            tenant_id=config.TENANT_ID,
+            client_id=config.CLIENT_ID,
+            client_secret=client_secret,
+        )
+    return None
+
+
+async def _create_online_meeting(user_aad_id: str) -> dict | None:
+    """Create a Teams online meeting via Microsoft Graph API.
+
+    Uses application permissions (OnlineMeetings.ReadWrite.All) to create
+    a meeting on behalf of the user.
+    """
+    credential = _get_graph_credential()
+    if not credential:
+        logger.error("No credential available for Graph API")
+        return None
+
+    try:
+        token = await credential.get_token(GRAPH_SCOPE)
+        headers = {
+            "Authorization": f"Bearer {token.token}",
+            "Content-Type": "application/json",
+        }
+        body = {"subject": "Labby Voice Session"}
+
+        async with aiohttp.ClientSession() as session:
+            url = f"https://graph.microsoft.com/v1.0/users/{user_aad_id}/onlineMeetings"
+            async with session.post(url, headers=headers, json=body) as resp:
+                if resp.status == 201:
+                    return await resp.json()
+                error = await resp.text()
+                logger.error("Graph API error creating meeting: %s %s", resp.status, error)
+                return None
+    finally:
+        await credential.close()
 
 
 class LabbyVoiceAgent(TeamsActivityHandler):
@@ -38,16 +89,43 @@ class LabbyVoiceAgent(TeamsActivityHandler):
             )
 
     async def _handle_call(self, turn_context: TurnContext, text: str) -> None:
-        """Prompt the user to start a voice session by calling the bot."""
+        """Start a voice session by creating a Teams meeting, joining it, and sending the link."""
         if not _call_handler:
             await turn_context.send_activity("Voice calling is not configured on this instance.")
             return
 
-        await turn_context.send_activity(
-            "📞 **To start a voice session:**\n\n"
-            "Click the **phone icon** (🔊) at the top of this chat to call me directly.\n\n"
-            "Once connected, you can talk to Labby about your Azure resources using natural speech."
-        )
+        aad_id = getattr(turn_context.activity.from_property, "aad_object_id", None)
+        if not aad_id:
+            await turn_context.send_activity(
+                "Could not resolve your Teams identity. Please ensure you're messaging from a Teams client."
+            )
+            return
+
+        try:
+            await turn_context.send_activity("🎙️ Setting up a voice session...")
+
+            meeting = await _create_online_meeting(aad_id)
+            if not meeting:
+                await turn_context.send_activity("Failed to create meeting. Check Graph API permissions.")
+                return
+
+            join_url = meeting.get("joinWebUrl", "")
+
+            # Bot joins the meeting via ACS Call Automation
+            try:
+                _call_handler.join_teams_meeting(join_url)
+                logger.info("Bot joined meeting: %s", join_url)
+            except Exception:
+                logger.exception("Bot failed to join meeting")
+
+            await turn_context.send_activity(
+                f"📞 **Join the voice session:**\n\n[Click here to join]({join_url})\n\n"
+                "Labby is already in the meeting — join and start talking about your Azure resources."
+            )
+
+        except Exception as e:
+            logger.exception("Failed to set up voice session")
+            await turn_context.send_activity(f"Failed to start voice session: {e}")
 
     async def _handle_resource_query(self, turn_context: TurnContext, text: str) -> None:
         parts = text.split(maxsplit=1)

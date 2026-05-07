@@ -1,6 +1,8 @@
 """ACS Call Automation handler for incoming Teams calls and meeting-based outbound calls."""
 
+import json
 import logging
+import uuid
 
 from azure.communication.callautomation import (
     AudioFormat,
@@ -11,6 +13,7 @@ from azure.communication.callautomation import (
     StreamingTransportType,
 )
 from azure.communication.identity import CommunicationIdentityClient
+from azure.core.rest import HttpRequest
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +49,18 @@ class CallHandler:
             audio_format=AudioFormat.PCM16_K_MONO,
         )
 
+    def _media_streaming_dict(self) -> dict:
+        """Media streaming config as a dict for raw REST calls."""
+        return {
+            "transportUrl": self.media_streaming_url(),
+            "transportType": "websocket",
+            "contentType": "audio",
+            "audioChannelType": "mixed",
+            "startMediaStreaming": True,
+            "enableBidirectional": True,
+            "audioFormat": "Pcm16KMono",
+        }
+
     def answer_call(self, incoming_call_context: str) -> str:
         """Answer an incoming call with bidirectional media streaming enabled.
 
@@ -61,19 +76,48 @@ class CallHandler:
         logger.info("Answered call, connection_id=%s", call_connection_id)
         return call_connection_id
 
-    def join_meeting(self, server_call_id: str) -> str:
-        """Join an existing call/meeting using its server call ID with media streaming.
+    def join_teams_meeting(self, teams_meeting_url: str) -> str:
+        """Join a Teams meeting via its join URL using the ACS Call Automation REST API.
+
+        The Python SDK doesn't expose teamsMeetingLinkLocator, so we send
+        the createCall request directly with the meeting link in the body.
 
         Returns the call_connection_id for tracking.
         """
-        result = self.client.connect_call(
-            callback_url=self.callback_url,
-            server_call_id=server_call_id,
-            media_streaming=self._media_streaming_options(),
+        api_version = self.client._client._config.api_version
+        body = {
+            "callLocator": {
+                "teamsMeetingLinkLocator": {
+                    "meetingLink": teams_meeting_url,
+                },
+                "kind": "teamsMeetingLinkLocator",
+            },
+            "source": {
+                "communicationUser": {
+                    "id": self._source_identity.properties["id"],
+                },
+            },
+            "callbackUri": self.callback_url,
+            "mediaStreamingOptions": self._media_streaming_dict(),
+        }
+
+        request = HttpRequest(
+            method="POST",
+            url=f"/calling/callConnections?api-version={api_version}",
+            headers={
+                "Content-Type": "application/json",
+                "Repeatability-Request-ID": str(uuid.uuid4()),
+                "Repeatability-First-Sent": "Thu, 01 Jan 2026 00:00:00 GMT",
+            },
+            content=json.dumps(body),
         )
 
-        call_connection_id = result.call_connection_id
-        logger.info("Joined meeting, server_call_id=%s, connection_id=%s", server_call_id, call_connection_id)
+        response = self.client._client._client.send_request(request)
+        response.raise_for_status()
+
+        result = response.json()
+        call_connection_id = result.get("callConnectionId", "unknown")
+        logger.info("Joined Teams meeting, connection_id=%s", call_connection_id)
         return call_connection_id
 
     def hang_up(self, call_connection_id: str) -> None:

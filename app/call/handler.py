@@ -109,13 +109,13 @@ class CallHandler:
             method="POST",
             url=f"{endpoint}/calling/callConnections?api-version={api_version}",
             headers={
-                "Content-Type": "application/json",
                 "Repeatability-Request-ID": str(uuid.uuid4()),
                 "Repeatability-First-Sent": "Thu, 01 Jan 2026 00:00:00 GMT",
             },
-            content=json.dumps(body),
+            json=body,
         )
 
+        logger.info("createCall request body: %s", json.dumps(body, indent=2))
         response = self.client._client._client.send_request(request)
         response.raise_for_status()
 

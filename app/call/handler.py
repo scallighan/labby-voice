@@ -85,19 +85,15 @@ class CallHandler:
         Returns the call_connection_id for tracking.
         """
         api_version = self.client._client._config.api_version
+        source_id = self._source_identity.properties["id"]
         body = {
-            "callLocator": {
-                "teamsMeetingLinkLocator": {
-                    "meetingLink": teams_meeting_url,
-                },
-                "kind": "teamsMeetingLinkLocator",
-            },
-            "source": {
-                "communicationUser": {
-                    "id": self._source_identity.properties["id"],
-                },
-            },
+            "targets": [],
+            "source": {"communicationUser": {"id": source_id}},
             "callbackUri": self.callback_url,
+            "requestedModalities": ["audio"],
+            "teamsMeetingLinkLocator": {
+                "teamsMeetingLink": teams_meeting_url,
+            },
             "mediaStreamingOptions": self._media_streaming_dict(),
         }
 

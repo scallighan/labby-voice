@@ -2,6 +2,7 @@
 
 import json
 import logging
+from io import BytesIO
 
 from azure.communication.callautomation import (
     AudioFormat,
@@ -101,8 +102,8 @@ class CallHandler:
         }
 
         logger.info("createCall with meeting link: %s", meeting_url)
-        raw_bytes = json.dumps(body).encode("utf-8")
-        result = self.client._client.create_call(create_call_request=raw_bytes, content_type="application/json")
+        raw_body = BytesIO(json.dumps(body).encode("utf-8"))
+        result = self.client._client.create_call(create_call_request=raw_body, content_type="application/json")
 
         call_connection_id = result.call_connection_id
         logger.info("Joined Teams meeting, connection_id=%s", call_connection_id)

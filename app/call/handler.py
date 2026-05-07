@@ -1,8 +1,6 @@
 """ACS Call Automation handler for incoming Teams calls and meeting-based outbound calls."""
 
-import json
 import logging
-from io import BytesIO
 
 from azure.communication.callautomation import (
     AudioFormat,
@@ -102,8 +100,33 @@ class CallHandler:
         }
 
         logger.info("createCall with meeting link: %s", meeting_url)
-        raw_body = BytesIO(json.dumps(body).encode("utf-8"))
-        result = self.client._client.create_call(create_call_request=raw_body, content_type="application/json")
+        # Bypass isinstance check by passing as a dict — SDK will try to serialize
+        # it as a model and fail. Instead, use the internal pipeline directly.
+        from azure.communication.callautomation._generated.operations._operations import (
+            build_azure_communication_call_automation_service_create_call_request,
+        )
+
+        _request = build_azure_communication_call_automation_service_create_call_request(
+            content_type="application/json",
+            api_version=self.client._client._config.api_version,
+            json=body,
+        )
+        path_format_arguments = {
+            "endpoint": self.client._client._serialize.url(
+                "self._config.endpoint", self.client._client._config.endpoint, "str", skip_quote=True
+            ),
+        }
+        _request.url = self.client._client._client.format_url(_request.url, **path_format_arguments)
+
+        pipeline_response = self.client._client._client._pipeline.run(_request, stream=False)
+        response = pipeline_response.http_response
+
+        if response.status_code not in [201]:
+            from azure.core.exceptions import HttpResponseError
+
+            raise HttpResponseError(response=response)
+
+        result = self.client._client._deserialize("CallConnectionProperties", pipeline_response.http_response)
 
         call_connection_id = result.call_connection_id
         logger.info("Joined Teams meeting, connection_id=%s", call_connection_id)

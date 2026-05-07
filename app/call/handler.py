@@ -74,7 +74,6 @@ class CallHandler:
         result = self.client.create_call(
             target_participant=target,
             callback_url=self.callback_url,
-            source_display_name=display_name,
             media_streaming=self._media_streaming_options(),
             teams_app_source=teams_app_source,
         )

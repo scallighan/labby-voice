@@ -40,19 +40,25 @@ def _get_graph_credential():
     return None
 
 
-async def _create_online_meeting(user_aad_id: str) -> dict | None:
+async def _create_online_meeting(user_aad_id: str) -> dict | str:
     """Create a Teams online meeting via Microsoft Graph API.
 
     Uses application permissions (OnlineMeetings.ReadWrite.All) to create
     a meeting on behalf of the user.
+
+    Returns meeting dict on success, or an error string on failure.
     """
     credential = _get_graph_credential()
     if not credential:
-        logger.error("No credential available for Graph API")
-        return None
+        return "No credential available (RUNNING_ON_AZURE or CLIENT_SECRET not configured)"
 
     try:
-        token = await credential.get_token(GRAPH_SCOPE)
+        try:
+            token = await credential.get_token(GRAPH_SCOPE)
+        except Exception as e:
+            logger.exception("Failed to acquire Graph token")
+            return f"Token acquisition failed: {e}"
+
         headers = {
             "Authorization": f"Bearer {token.token}",
             "Content-Type": "application/json",
@@ -66,7 +72,7 @@ async def _create_online_meeting(user_aad_id: str) -> dict | None:
                     return await resp.json()
                 error = await resp.text()
                 logger.error("Graph API error creating meeting: %s %s", resp.status, error)
-                return None
+                return f"Graph API returned {resp.status}: {error}"
     finally:
         await credential.close()
 
@@ -105,8 +111,8 @@ class LabbyVoiceAgent(TeamsActivityHandler):
             await turn_context.send_activity("🎙️ Setting up a voice session...")
 
             meeting = await _create_online_meeting(aad_id)
-            if not meeting:
-                await turn_context.send_activity("Failed to create meeting. Check Graph API permissions.")
+            if isinstance(meeting, str):
+                await turn_context.send_activity(f"Failed to create meeting: {meeting}")
                 return
 
             join_url = meeting.get("joinWebUrl", "")

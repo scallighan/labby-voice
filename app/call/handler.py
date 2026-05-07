@@ -101,9 +101,10 @@ class CallHandler:
             "mediaStreamingOptions": self._media_streaming_dict(),
         }
 
+        endpoint = self.client._client._config.endpoint.rstrip("/")
         request = HttpRequest(
             method="POST",
-            url=f"/calling/callConnections?api-version={api_version}",
+            url=f"{endpoint}/calling/callConnections?api-version={api_version}",
             headers={
                 "Content-Type": "application/json",
                 "Repeatability-Request-ID": str(uuid.uuid4()),

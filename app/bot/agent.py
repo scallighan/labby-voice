@@ -119,10 +119,15 @@ class LabbyVoiceAgent(TeamsActivityHandler):
 
             # Bot joins the meeting via ACS Call Automation
             try:
-                _call_handler.join_teams_meeting(join_url)
-                logger.info("Bot joined meeting: %s", join_url)
-            except Exception:
+                conn_id = _call_handler.join_teams_meeting(join_url)
+                logger.info("Bot joined meeting: %s, connection_id=%s", join_url, conn_id)
+            except Exception as join_err:
                 logger.exception("Bot failed to join meeting")
+                await turn_context.send_activity(
+                    f"⚠️ Meeting created but bot failed to join: {join_err}\n\n"
+                    f"[Join link (bot not connected)]({join_url})"
+                )
+                return
 
             await turn_context.send_activity(
                 f"📞 **Join the voice session:**\n\n[Click here to join]({join_url})\n\n"

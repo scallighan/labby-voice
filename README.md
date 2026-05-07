@@ -10,7 +10,7 @@ Teams Chat → M365 Agents SDK (aiohttp) → Python Agent
 Python Agent → Azure Resource Graph → Azure Subscription Resources
 ```
 
-The bot supports both **inbound** calls (user calls the bot in Teams) and **outbound** calls (bot calls the user via `/call` command). Voice audio is bridged through ACS Call Automation to the Azure Voice Live API for real-time speech-to-speech interactions.
+The bot supports voice sessions via the `#call` command: the bot creates a Teams meeting, joins it via ACS Call Automation, and sends the user a join link. Voice audio is bridged through ACS to the Azure Voice Live API for real-time speech-to-speech interactions.
 
 - **app/**: Python agent using Microsoft 365 Agents SDK
   - `app.py` — entrypoint, creates aiohttp app with `/api/messages`, `/api/calls/events`, and `/health` routes
@@ -46,35 +46,52 @@ terraform init
 terraform apply
 ```
 
-### Teams Interop (ACS ↔ Teams Federation)
+### Teams Admin Configuration
 
-The bot uses Azure Communication Services as an **external user** to call Teams users — no Teams Phone license is required. You must enable ACS-Teams federation on your tenant:
+The bot requires two Teams admin PowerShell configurations. Install the module first if needed:
 
-1. **Get your ACS immutable resource ID:**
+```powershell
+Install-Module MicrosoftTeams -Force
+Connect-MicrosoftTeams
+```
 
-   ```bash
-   az communication show --name <acs-resource-name> --resource-group <rg-name> \
-     --query "immutableResourceId" -o tsv
-   ```
+#### 1. ACS–Teams Federation
 
-2. **Enable federation in Teams admin PowerShell:**
+Enable Azure Communication Services federation so the bot can bridge audio into Teams meetings:
 
-   ```powershell
-   Connect-MicrosoftTeams
+```powershell
+# Get your ACS immutable resource ID
+# az communication show --name <acs-resource-name> --resource-group <rg-name> \
+#   --query "immutableResourceId" -o tsv
 
-   Set-CsTeamsAcsFederationConfiguration `
-     -Identity Global `
-     -EnableAcsUsers $true `
-     -AllowedAcsResources @("<acs-immutable-resource-id>")
-   ```
+Set-CsTeamsAcsFederationConfiguration `
+  -Identity Global `
+  -EnableAcsUsers $true `
+  -AllowedAcsResources @("<acs-immutable-resource-id>")
 
-3. **Verify federation is enabled:**
+# Verify
+Get-CsTeamsAcsFederationConfiguration
+```
 
-   ```powershell
-   Get-CsTeamsAcsFederationConfiguration
-   ```
+#### 2. Application Access Policy (for `#call` command)
 
-> **Note:** This federation setup allows ACS to place VoIP calls to Teams users as an external caller. No Teams Phone or Enterprise Voice license is needed on the Teams user side.
+The `#call` command creates Teams meetings on behalf of users via the Microsoft Graph API. Graph's `OnlineMeetings.ReadWrite.All` application permission requires a **Teams Application Access Policy** — this cannot be configured in any portal UI, only via PowerShell.
+
+```powershell
+# Create a policy allowing your bot's App ID to create meetings
+New-CsApplicationAccessPolicy `
+  -Identity "Labby-Voice-Policy" `
+  -AppIds "<bot-app-client-id>" `
+  -Description "Allow Labby Voice bot to create online meetings"
+
+# Apply globally (all users can use #call)
+Grant-CsApplicationAccessPolicy -PolicyName "Labby-Voice-Policy" -Global
+
+# OR apply to specific users only:
+# Grant-CsApplicationAccessPolicy -PolicyName "Labby-Voice-Policy" -Identity "user@domain.com"
+```
+
+> **Note:** Policy propagation can take **30–60 minutes**. The `#call` command will fail with a 403 error until propagation completes.
 
 ## Development
 

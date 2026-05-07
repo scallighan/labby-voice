@@ -54,7 +54,7 @@ class CallHandler:
             media_streaming=self._media_streaming_options(),
         )
 
-        call_connection_id = result.call_connection.call_connection_id
+        call_connection_id = result.call_connection_id
         logger.info("Answered call, connection_id=%s", call_connection_id)
         return call_connection_id
 
@@ -76,7 +76,7 @@ class CallHandler:
             media_streaming=self._media_streaming_options(),
         )
 
-        call_connection_id = result.call_connection.call_connection_id
+        call_connection_id = result.call_connection_id
         logger.info("Outbound call to %s, connection_id=%s", teams_user_aad_id, call_connection_id)
         return call_connection_id
 

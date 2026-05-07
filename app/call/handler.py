@@ -1,4 +1,4 @@
-"""ACS Call Automation handler for incoming Teams calls."""
+"""ACS Call Automation handler for incoming Teams calls and meeting-based outbound calls."""
 
 import logging
 
@@ -8,7 +8,6 @@ from azure.communication.callautomation import (
     MediaStreamingAudioChannelType,
     MediaStreamingContentType,
     MediaStreamingOptions,
-    MicrosoftTeamsUserIdentifier,
     StreamingTransportType,
 )
 from azure.communication.identity import CommunicationIdentityClient
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class CallHandler:
-    """Manages ACS Call Automation lifecycle: answer calls, handle events, cleanup."""
+    """Manages ACS Call Automation lifecycle: answer calls, join meetings, cleanup."""
 
     def __init__(self, acs_connection_string: str, callback_base_url: str):
         self.identity_client = CommunicationIdentityClient.from_connection_string(acs_connection_string)
@@ -62,29 +61,19 @@ class CallHandler:
         logger.info("Answered call, connection_id=%s", call_connection_id)
         return call_connection_id
 
-    def create_call(self, teams_user_aad_id: str, display_name: str = "Labby Voice") -> str:
-        """Initiate an outbound call to a Teams user via ACS as a CommunicationUser.
-
-        Creates a temporary ACS identity to act as the caller, then places
-        the call to the target Teams user.
-
-        Args:
-            teams_user_aad_id: The target user's Microsoft Entra (AAD) Object ID.
-            display_name: Caller display name shown to the Teams user.
+    def join_meeting(self, server_call_id: str) -> str:
+        """Join an existing call/meeting using its server call ID with media streaming.
 
         Returns the call_connection_id for tracking.
         """
-        target = MicrosoftTeamsUserIdentifier(user_id=teams_user_aad_id)
-
-        result = self.client.create_call(
-            target_participant=target,
+        result = self.client.connect_call(
             callback_url=self.callback_url,
-            source_display_name=display_name,
+            server_call_id=server_call_id,
             media_streaming=self._media_streaming_options(),
         )
 
         call_connection_id = result.call_connection_id
-        logger.info("Outbound call to %s, connection_id=%s", teams_user_aad_id, call_connection_id)
+        logger.info("Joined meeting, server_call_id=%s, connection_id=%s", server_call_id, call_connection_id)
         return call_connection_id
 
     def hang_up(self, call_connection_id: str) -> None:

@@ -33,7 +33,6 @@ if config.ACS_CONNECTION_STRING and config.CALLBACK_BASE_URL:
     call_handler = CallHandler(
         acs_connection_string=config.ACS_CONNECTION_STRING,
         callback_base_url=config.CALLBACK_BASE_URL,
-        bot_app_id=config.CLIENT_ID,
     )
     media_bridge = MediaBridge(voice_handler=voice_handler, config=config)
     set_call_handler(call_handler)

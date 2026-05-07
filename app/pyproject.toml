@@ -18,6 +18,7 @@ dependencies = [
 
     # ACS Call Automation
     "azure-communication-callautomation",
+    "azure-communication-identity",
 
     # Web server
     "aiohttp>=3.9",

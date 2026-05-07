@@ -8,10 +8,10 @@ from azure.communication.callautomation import (
     MediaStreamingAudioChannelType,
     MediaStreamingContentType,
     MediaStreamingOptions,
-    MicrosoftTeamsAppIdentifier,
     MicrosoftTeamsUserIdentifier,
     StreamingTransportType,
 )
+from azure.communication.identity import CommunicationIdentityClient
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,13 @@ logger = logging.getLogger(__name__)
 class CallHandler:
     """Manages ACS Call Automation lifecycle: answer calls, handle events, cleanup."""
 
-    def __init__(self, acs_connection_string: str, callback_base_url: str, bot_app_id: str):
-        self.client = CallAutomationClient.from_connection_string(acs_connection_string)
+    def __init__(self, acs_connection_string: str, callback_base_url: str):
+        self.identity_client = CommunicationIdentityClient.from_connection_string(acs_connection_string)
+        # Create a persistent ACS identity to use as the call source
+        self._source_identity = self.identity_client.create_user()
+        self.client = CallAutomationClient.from_connection_string(acs_connection_string, source=self._source_identity)
         self.callback_base_url = callback_base_url.rstrip("/")
-        self.bot_app_id = bot_app_id
+        logger.info("CallHandler initialized with source identity: %s", self._source_identity.properties["id"])
 
     @property
     def callback_url(self) -> str:
@@ -60,7 +63,10 @@ class CallHandler:
         return call_connection_id
 
     def create_call(self, teams_user_aad_id: str, display_name: str = "Labby Voice") -> str:
-        """Initiate an outbound call to a Teams user via ACS Teams interop.
+        """Initiate an outbound call to a Teams user via ACS as a CommunicationUser.
+
+        Creates a temporary ACS identity to act as the caller, then places
+        the call to the target Teams user.
 
         Args:
             teams_user_aad_id: The target user's Microsoft Entra (AAD) Object ID.
@@ -69,13 +75,12 @@ class CallHandler:
         Returns the call_connection_id for tracking.
         """
         target = MicrosoftTeamsUserIdentifier(user_id=teams_user_aad_id)
-        teams_app_source = MicrosoftTeamsAppIdentifier(app_id=self.bot_app_id)
 
         result = self.client.create_call(
             target_participant=target,
             callback_url=self.callback_url,
+            source_display_name=display_name,
             media_streaming=self._media_streaming_options(),
-            teams_app_source=teams_app_source,
         )
 
         call_connection_id = result.call_connection_id

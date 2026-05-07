@@ -87,13 +87,20 @@ class CallHandler:
         api_version = self.client._client._config.api_version
         source_id = self._source_identity.properties["id"]
         body = {
-            "targets": [],
-            "source": {"communicationUser": {"id": source_id}},
+            "targets": [
+                {
+                    "kind": "teamsMeeting",
+                    "teamsMeetingLinkLocator": {"meetingLink": teams_meeting_url},
+                }
+            ],
+            "source": {
+                "kind": "communicationUser",
+                "communicationUser": {"id": source_id},
+                "id": source_id,
+                "rawId": source_id,
+            },
             "callbackUri": self.callback_url,
             "requestedModalities": ["audio"],
-            "teamsMeetingLinkLocator": {
-                "teamsMeetingLink": teams_meeting_url,
-            },
             "mediaStreamingOptions": self._media_streaming_dict(),
         }
 

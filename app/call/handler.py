@@ -86,11 +86,18 @@ class CallHandler:
         body = {
             "targets": [
                 {
+                    "id": source_id,
+                    "rawId": source_id,
                     "kind": "communicationUser",
                     "communicationUser": {"id": source_id},
                 }
             ],
-            "source": {"communicationUser": {"id": source_id}},
+            "source": {
+                "id": source_id,
+                "rawId": source_id,
+                "kind": "communicationUser",
+                "communicationUser": {"id": source_id},
+            },
             "callbackUri": self.callback_url,
             "mediaStreamingOptions": self._media_streaming_dict(),
             "callLocator": {
